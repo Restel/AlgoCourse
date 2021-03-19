@@ -1,17 +1,6 @@
 __author__ = 'Lina Brilliantova, RIT'
 """A program that plays the game fanorona. Implements   
-Usage: python3 fanorona.py [X] [Y] [1 player] [2nd player] [depth_level_1] [depth_level_2]
-Parameters: 
-1) X and Y can be either (3,3), (5,5) or (9,5)
-2) A player can be chosen from the following list:
-"random": makes an arbitrary legal move
-"minimax_brute": performs a brute-force minimax search
-"minimax_depth": performs a minimax search over a desired number of levels in a search tree
-"alpha_beta_brute": a minimax search with alpha-beta pruning, brute force
-"alpha_beta_depth": a minimax search with alpha-beta pruning with a maximum depth level
-3) depth_level_1 the depth level for 1st player (if applicable)
-depth_level_2 the depth level for 2nd player (if applicable)
-4) 
+Usage: python3 fanorona.py
 
 TODO 
 DONE include an alpha beta player
@@ -19,32 +8,22 @@ DONE include number of states
 DONE include an evaluation0
 add BRUTE into alpha-beta and minimax 
 include evaluation 2  
-termination in a draw
+DONE termination in a draw
+
+EXPERIMENTS:
+1) + a draw ! Brute-force with large depth limit and zero evaluation function vs the same, on the 3x3 game
+2) + Brute wins! Random vs brute-force with limit(s) of your choice, either non-zero evaluation function, on 5x5 or 5x9
+3) Brute-force with limit 1 vs brute-force with higher limit of your choice, same evaluation function, on 5x5 or 5x9
+4)Brute-force with limit of your choice and one evaluation function vs same depth limit and another evaluation function, 5x5 or 5x9
+5)Alpha-beta with limit of your choice and one evaluation function vs same depth limit and other evaluation function, 5x5 or 5x9
+
+You should also run any other tests that you like to show some features of your search and/or evaluation functions. Note that for random opponents, you will probably want to run several games with the same configuration and collect the results.
+
 """
 import random
 import sys
 import numpy as np
 
-
-#
-# def end_game(state):
-#     _, nwhite, nblack = terminal(state)
-#     if (nwhite==2 and nblack==2) or (nwhite==0 or nblack==0):
-#         return (True, nwhite, nblack)
-#     else:
-#         return (False, nwhite, nblack)
-#
-# def check_end_game(state, nstates1, nstates2):
-#     end, nwhite, nblack = end_game(state)
-#     if end:
-#         if nwhite == nblack:
-#             result = "Draw"
-#         if nwhite == 0:
-#             result = "Player 2 won. Number of states visited:" + str(nstates2) + " Player 1 lose. Number of states visited:" + str(nstates1)
-#         if nblack == 0:
-#             result = "Player 1 won. Number of states visited:" + str(nstates1)+ " Player 2 lose. Number of states visited:" + str(nstates2)
-#         print(result)
-#         return True
 
 def print_winner1(nstates1, nstates2):
     print("Player 1 won. Number of states visited:" + str(nstates1) + " Player 2 lose. Number of states visited:" + str(
@@ -57,7 +36,7 @@ def print_winner2(nstates1, nstates2):
 
 
 def print_draw(nstates1, nstates2):
-    print("A draw! Player 1 visited ") + str(nstates1) + " states. Player 2 visited:" + str(nstates2) + " states."
+    print("A draw! Player 1 visited " + str(nstates1) + " states. Player 2 visited:" + str(nstates2) + " states.")
 
 
 def print_winner(nwhite, nblack, nstates1, nstates2):
@@ -69,86 +48,85 @@ def print_winner(nwhite, nblack, nstates1, nstates2):
             nstates1) + " Player 2 lose. Number of states visited:" + str(nstates2))
 
 
-def end_game(state, nstates1, nstates2, player1, player2, side):
+def end_game(state, nstates1, nstates2, player1, player2, evaltype1, evaltype2):
     ans, nwhite, nblack = terminal(state)
     if ans:
         print_winner(nwhite, nblack, nstates1, nstates2)
-    elif nblack == 2 and nwhite == 2:
-        best1, _, nstates1 = player1(state=state, rem_depth = 7, side = side, nstate = nstates1)
-        best2, _, nstates2 = player2
-        if best1 == 1:
-            print_winner1(nstates1, nstates2)
-            return True
-        elif best2 == 1:
-            print_winner2(nstates1, nstates2)
-            return True
-        else:
+        return True
+    elif nblack <= 2 and nwhite <= 2:
+        best1, _, _ = player1(state=state, rem_depth = 7, side = 1, nstates = nstates1, evaltype = evaltype1)
+        best2, _, _ = player2(state=state, rem_depth = 7, side = -1, nstates = nstates2, evaltype = evaltype2)
+        if best1 == 1 or best2 == 1:
+            return False # can not declare a draw yet
+        else: # no one sees the win in 7 steps and both sides have few pieces -> a draw
             print_draw(nstates1, nstates2)
             return True
     return False
 
+def play_against(crd, title, player1, player2, evaltype1, evaltype2, rem_depth1, rem_depth2):
+    """
+
+    :param crd:
+    :param title:
+    :param player1:
+    :param player2:
+    :param evaltype1:
+    :param evaltype2:
+    :param rem_depth1:
+    :param rem_depth2:
+    :return: None
+    """
+    print(title)
+    global X,Y
+    X,Y = crd
+    state = initial_state(X, Y)
+    nstates1 = 0
+    nstates2 = 0
+    gamend = False
+    first_side = 1
+    i = 0
+    while not gamend:
+        i += 1
+        _, state, nstates1 = player1(state, first_side, rem_depth1, nstates1, evaltype=evaltype1)
+        print(i)
+        print(state)
+        # print(state)
+        # print("Nstates1:", nstates1)
+        gamend = end_game(state, nstates1, nstates2, player1, player2,
+                          evaltype1=evaltype1, evaltype2=evaltype2)
+        if not gamend:
+            i += 1
+            _, state, nstates2 = player2(state, other_side(first_side), rem_depth2, nstates2, evaltype2)
+            nstates2 += 1
+            print(i)
+            print(state)
+            # print("Nstates2:", nstates2)
+            gamend = end_game(state, nstates1, nstates2, player1, player2,
+                              evaltype1=evaltype1, evaltype2=evaltype2)
 
 def fanorona():
     global X
     global Y
-    ###########################################################################################
-    title = "Game against a minimax with depth limit 3 (Player 1) and a random player(Player 2) on 5x5 board"
-    X = 5
-    Y = 5
-    state = initial_state(X, Y)
-    first_side = 1
-    print(title)
-    nstates1 = 0
-    nstates2 = 0
+
+
+    print("###########################################################################################")
     for i in range(5):
-        gamend = False
-        while not gamend:
-            print("Start" + str(i))
-            _, state, nstates1 = max_choose_move(state, first_side, 1, nstates1)
-            gamend = end_game(state, nstates1, nstates2, max_choose_move(), random_player(), side)
-            if not gamend:
-                state = random_player(state, other_side(first_side))
-                nstates2 += 1
-                gamend = end_game(state, nstates1, nstates2, max_choose_move(state=state,side=1, rem_depth=7, nstates=nstates1))
-    ###########################################################################################
-    title = "Game against a minimax with depth limit 1 (Player 1) and a random player(Player 2) on 5x5 board"
-    X = 5
-    Y = 5
-    #############################################################################################
+         play_against((5,5), "Player 1: random player, Player 2: minimax with depth limit on 5x5 board", random_player, max_choose_move, 0, 0, rem_depth1 = 1, rem_depth2 = 4)
+    print("###########################################################################################")
 
-#
-# def fanorona():
-#     global X
-#     global Y
-#     ###########################################################################################
-#     title = "Game against a minimax with depth limit 3 (Player 1) and a random player(Player 2) on 5x5 board"
-#     X = 5
-#     Y = 5
-#     state = initial_state(X, Y)
-#     first_side = 1
-#     print(title)
-#     nstates1 = 0
-#     nstates2 = 0
-#     for _ in range(5):
-#         gamend = False
-#         while not gamend:
-#             _, state, nstates1 = max_choose_move(state, first_side, 1, nstates1)
-#             gamend = check_end_game(state, nstates1, nstates2)
-#             if not gamend:
-#                 state = random_player(state, other_side(first_side))
-#                 nstates2 += 1
-#                 gamend = check_end_game(state, nstates1, nstates2)
-#     ###########################################################################################
-#     title = "Game against a minimax with depth limit 1 (Player 1) and a random player(Player 2) on 5x5 board"
-#     X = 5
-#     Y = 5
-#     #############################################################################################
+   # play_against((3,3), "Brute-force with large depth limit and zero evaluation function vs the same on 3X3 board", max_choose_move, max_choose_move, 0, 0, rem_depth1 = 5, rem_depth2 = 5)
+
+    #play_against((5,5), "Brute-force with limit 1 vs brute-force with higher limit of your choice, same evaluation function on 5x5 board", max_choose_move, max_choose_move, 1, 1, rem_depth1 = 1, rem_depth2 = 2)
+
+    #play_against((5, 5),"Brute-force with limit 1 vs brute-force with limit 2, Evaluation function 1 on 5x5 board",max_choose_move, max_choose_move, 1, 1, rem_depth1=1, rem_depth2=2)
 
 
-def random_player(state, side):
+
+
+def random_player(state, side, rem_depth, nstates, evaltype):
     suc = successors(state, side)
     move = random.choice(suc)
-    return move
+    return None, move, nstates+1
 
 
 def terminal(state):
@@ -178,7 +156,15 @@ def payoff(side, nwhite):
             return -1
 
 
-def evaluate(side, nwhite, nblack, type=1):
+def evaluate(side, nwhite, nblack, type = 1):
+    """
+
+    :param side:
+    :param nwhite:
+    :param nblack:
+    :param type:
+    :return:
+    """
     # if side == 1:
     #     return (nwhite - nblack)/npieces
     # if side == -1:
@@ -187,15 +173,17 @@ def evaluate(side, nwhite, nblack, type=1):
         return (nwhite - nblack) / npieces * side
     elif type == 0:
         return 0
+    elif type == 2:
+        return 
 
 
-def max_choose_move(state, side, rem_depth, nstates):
+def max_choose_move(state, side, rem_depth, nstates, evaltype):
     # todo include brute force
     end, nwhite, nblack = terminal(state)
     if end:
         return payoff(side, nwhite), state, nstates
     if rem_depth == 0:
-        return evaluate(side, nwhite, nblack), state, nstates
+        return evaluate(side, nwhite, nblack, evaltype), state, nstates
     move = None
     best = -10000
     suc = successors(state, side)
@@ -204,14 +192,14 @@ def max_choose_move(state, side, rem_depth, nstates):
     # print(len(suc))
     for s in suc:
         nstates += 1
-        sval, _, nstates = min_choose_move(s, other_side(side), rem_depth - 1, nstates)
+        sval, _, nstates = min_choose_move(s, other_side(side), rem_depth - 1, nstates, evaltype)
         if sval > best:
             best = sval
             move = s
     return best, move, nstates
 
 
-def min_choose_move(state, side, rem_depth, nstates):
+def min_choose_move(state, side, rem_depth, nstates, evaltype):
     end, nwhite, nblack = terminal(state)
     if end:
         return payoff(side, nwhite) * -1, state, nstates
@@ -225,7 +213,7 @@ def min_choose_move(state, side, rem_depth, nstates):
     # print(len(suc))
     for s in suc:
         nstates += 1
-        sval, _, nstates = max_choose_move(s, other_side(side), rem_depth - 1, nstates)
+        sval, _, nstates = max_choose_move(s, other_side(side), rem_depth - 1, nstates, evaltype)
         if sval < best:
             best = sval
             move = s
